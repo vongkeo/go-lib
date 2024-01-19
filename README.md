@@ -8,8 +8,21 @@ go get github.com\vongkeo\go-lib
 
 ### Test
 ```bash
-go test
+# to update go.mod
+go mod tidy
+# to run all tests
 go test -v
+# to run all tests in sub packages
 go test -v ./...
+# to run all tests in sub packages with coverage
 go test -cover ./...
+```
+### Update to go package
+```bash
+git add .
+git commit -m "update to v0.1.3"
+git tag v0.1.3
+git push origin v0.1.3
+GOPROXY=proxy.golang.org go list -m github.com/vongkeo/go-lib@v0.1.3
+go list -m
 ```

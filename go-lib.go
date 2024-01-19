@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -139,4 +140,80 @@ func Log(requestID any, messages ...interface{}) {
 	}
 
 	log.Printf("[%s] [%s] %s", requestID, label, fmt.Sprint(messages...))
+}
+
+func SetTimeZone(zone string) bool {
+	// set timezone
+	if zone == "" {
+		zone = "Asia/Bangkok"
+	}
+	loc, _ := time.LoadLocation(zone)
+	time.Local = loc
+	os.Setenv("TZ", zone)
+	return true
+}
+
+func GenerateReqId(length int) string {
+	str := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	result := ""
+	for i := 0; i < length; i++ {
+		result += string(str[randomInt(0, len(str)-1)])
+	}
+	return result
+}
+func GenerateReqTime() string {
+	currentTime := time.Now().Format("20060102150405")
+	return currentTime
+
+}
+
+func GetLogFileName() (string, error) {
+	// UTC +7
+	cur := time.Now().UTC().Add(time.Hour * 7)
+	// Get the current time in the timezone
+	currentDate := cur.Format("2006-01-02")
+	logFileName := fmt.Sprintf("logs/%s.log", currentDate)
+	println(cur.Format("2006-01-02 15:04:05"))
+	return logFileName, nil
+}
+
+func GetNow() time.Time {
+	// UTC +7
+	cur := time.Now().UTC().Add(time.Hour * 7)
+	// Get the current time in the timezone
+	return cur
+}
+
+func IsDate(date string) bool {
+	_, err := time.Parse("02-01-2006", date)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+func GetLocalDate() time.Time {
+	// UTC +7
+	cur := time.Now().UTC().Add(time.Hour * 7)
+	// Get the current time in the timezone
+	return cur
+}
+
+func DateFormat(date string) string {
+	// date string format to 2006-01-02
+	t, _ := time.Parse("2006-01-02", date)
+	return t.Format("2006-01-02")
+
+}
+
+func GetYesterday() string {
+	yesterday := time.Now().AddDate(0, 0, -1)
+	return yesterday.Format("2006-01-02")
+}
+func Tomorrow() time.Time {
+	loc, _ := time.LoadLocation("Asia/Bangkok")
+	t := time.Now().In(loc).AddDate(0, 0, 1).Format("2006-01-02")
+	tomorrow, _ := time.ParseInLocation("2006-01-02", t, loc)
+	return tomorrow
+
 }

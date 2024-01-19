@@ -141,3 +141,78 @@ func TestLog(t *testing.T) {
 	}
 
 }
+
+func TestSetTimeZone(t *testing.T) {
+	expected := true
+	zone := "Asia/Bangkok"
+	if got := SetTimeZone(zone); got != expected {
+		t.Errorf("SetTimeZone() = %t, didn't return %t", got, expected)
+	}
+
+}
+
+func TestGenerateReqId(t *testing.T) {
+	expected := true
+	length := 20
+	if got := GenerateReqId(length); got == "" {
+		t.Errorf("GenerateReqId() = %s, didn't return %t", got, expected)
+	}
+}
+
+func TestGetLogFileName(t *testing.T) {
+	expected := true
+	got, err := GetLogFileName()
+	if err != nil {
+		t.Errorf("GetLogFileName() = %s, didn't return %t", got, expected)
+	}
+
+}
+
+func TestGetNow(t *testing.T) {
+	expected := true
+	currentTime := GetNow()
+	if currentTime == (time.Time{}) {
+		t.Errorf("GetNow() = %s, didn't return %t", currentTime, expected)
+	}
+
+}
+
+func TestIsDate(t *testing.T) {
+	expected := true
+	date := "2024-01-18"
+	if got := IsDate(date); got != expected {
+		t.Errorf("IsDate(%s) = %t, didn't return %t", date, got, expected)
+	}
+
+}
+func TestGetLocalDate(t *testing.T) {
+	expected := true
+	if got := GetLocalDate(); got == (time.Time{}) {
+		t.Errorf("GetLocalDate() = %s, didn't return %t", got.String(), expected)
+	}
+
+}
+func TestDateFormat(t *testing.T) {
+	expected := true
+	date := "2024-01-18"
+	if got := DateFormat(date); got == "" {
+		t.Errorf("DateFormat(%s) = %s, didn't return %t", date, got, expected)
+	}
+
+}
+func TestGetYesterday(t *testing.T) {
+	expected := true
+	got := GetYesterday()
+	if got == "" {
+		t.Errorf("GetYesterday() = %s, didn't return %t", got, expected)
+	}
+
+}
+func TestTomorrow(t *testing.T) {
+	expected := true
+	got := Tomorrow()
+	if got == (time.Time{}) {
+		t.Errorf("Tomorrow() = %s, didn't return %t", got.String(), expected)
+	}
+
+}
