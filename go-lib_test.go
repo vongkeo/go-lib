@@ -28,3 +28,13 @@ func TestSubtract(t *testing.T) {
 		t.Errorf("Subtract(%d, %d) = %d, didn't return %d", a, b, got, expected)
 	}
 }
+
+func TestContains(t *testing.T) {
+	lists := "js,css,html"
+	fileEx := "css"
+	expected := true
+
+	if got := Contains(lists, fileEx); got != expected {
+		t.Errorf("Contains(%s, %s) = %t, didn't return %t", lists, fileEx, got, expected)
+	}
+}
