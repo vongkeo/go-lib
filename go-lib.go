@@ -18,12 +18,16 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"log"
 	mathRand "math/rand"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/tealeg/xlsx"
 )
 
 func Contains(lists string, fileEx string) bool {
@@ -378,4 +382,106 @@ func convertPrivateKeyString(privateKeyString string) (*rsa.PrivateKey, error) {
 	}
 
 	return privateKey, nil
+}
+
+func DownloadFile(url string, filepath string) error {
+	// Get the data
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	// read html file
+	rootPath, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	fmt.Println(rootPath)
+	// Create the file
+	out, err := os.Create(rootPath + filepath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	// Write the body to file
+	_, err = io.Copy(out, resp.Body)
+	return err
+}
+
+func GetExtension(url string) string {
+	// get extension
+	extension := ""
+	for i := len(url) - 1; i >= 0; i-- {
+		if string(url[i]) == "." {
+			break
+		}
+		extension = string(url[i]) + extension
+	}
+	return extension
+}
+
+func RenameFile(oldPath string, newPath string) error {
+	// rename file
+	rootPath, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	// rename
+	err = os.Rename(rootPath+oldPath, rootPath+newPath)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func MoveFile(oldPath string, newPath string) error {
+	// move file
+	rootPath, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	// move
+	err = os.Rename(rootPath+oldPath, rootPath+newPath)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func ExcelToJson(xlFile *xlsx.File) ([]map[string]interface{}, error) {
+	var jsonData []map[string]interface{}
+	// Loop through each of the sheets in the spreadsheet
+	for _, sheet := range xlFile.Sheets {
+		// Loop through each row in the sheet
+		for _, row := range sheet.Rows {
+			// Create a map to hold our row data
+			rowData := make(map[string]interface{})
+
+			// Loop through each cell in the row
+			for columnIndex, cell := range row.Cells {
+				// Get the value for the cell
+				text := cell.String()
+
+				// Use the column header as the key and the cell value as the value
+				columnHeader := sheet.Rows[0].Cells[columnIndex].String()
+				rowData[columnHeader] = text
+			}
+
+			// Add our Row Data to the jsonData
+			jsonData = append(jsonData, rowData)
+		}
+	}
+	// Marshal the data into JSON
+	jsonBytes, err := json.Marshal(jsonData)
+	if err != nil {
+		return nil, fmt.Errorf("Error marshaling JSON data: %s", err)
+	}
+	// Unmarshal JSON data into a slice of maps
+	var jsonSlice []map[string]interface{}
+	err = json.Unmarshal(jsonBytes, &jsonSlice)
+	if err != nil {
+		return nil, fmt.Errorf("Error un marshaling JSON data: %s", err)
+	}
+	return jsonSlice, nil
+
 }
