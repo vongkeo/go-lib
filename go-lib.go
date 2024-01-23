@@ -6,10 +6,20 @@
 package lib
 
 import (
+	"crypto"
+	"crypto/aes"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"log"
-	"math/rand"
+	mathRand "math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -102,7 +112,7 @@ func GenerateReference(length int) string {
 }
 
 func randomInt(min, max int) int {
-	return min + rand.Intn(max-min)
+	return min + mathRand.Intn(max-min+1)
 }
 
 func InArray(val string, array []string) bool {
@@ -216,4 +226,156 @@ func Tomorrow() time.Time {
 	tomorrow, _ := time.ParseInLocation("2006-01-02", t, loc)
 	return tomorrow
 
+}
+
+func StringToTime(str string) time.Time {
+	layout := "2006-01-02 15:04:05"
+	t, _ := time.Parse(layout, str)
+	return t
+}
+
+func setKey(privateKey string) ([]byte, error) {
+	key := []byte(privateKey)
+	sha := sha1.New()
+	sha.Write(key)
+	hashedKey := sha.Sum(nil)
+	derivedKey := hashedKey[:16]
+	return derivedKey, nil
+}
+
+func encrypt(dataString, privateKey string) (string, error) {
+	derivedKey, err := setKey(privateKey)
+	if err != nil {
+		return "", err
+	}
+
+	data := []byte(dataString)
+	paddedData := padData(data, aes.BlockSize)
+
+	block, err := aes.NewCipher(derivedKey)
+	if err != nil {
+		return "", err
+	}
+
+	cipherText := make([]byte, len(paddedData))
+	for i := 0; i < len(paddedData); i += aes.BlockSize {
+		block.Encrypt(cipherText[i:i+aes.BlockSize], paddedData[i:i+aes.BlockSize])
+	}
+
+	encryptedData := base64.StdEncoding.EncodeToString(cipherText)
+	return encryptedData, nil
+}
+
+func decrypt(encryptedData, privateKey string) (string, error) {
+	derivedKey, err := setKey(privateKey)
+	if err != nil {
+		return "", err
+	}
+
+	decodedData, err := base64.StdEncoding.DecodeString(encryptedData)
+	if err != nil {
+		return "", err
+	}
+
+	block, err := aes.NewCipher(derivedKey)
+	if err != nil {
+		return "", err
+	}
+
+	decryptedData := make([]byte, len(decodedData))
+	for i := 0; i < len(decodedData); i += aes.BlockSize {
+		block.Decrypt(decryptedData[i:i+aes.BlockSize], decodedData[i:i+aes.BlockSize])
+	}
+
+	unpaddedData := unpadData(decryptedData)
+
+	return string(unpaddedData), nil
+}
+func padData(data []byte, blockSize int) []byte {
+	padding := blockSize - (len(data) % blockSize)
+	pad := byte(padding)
+	paddedData := append(data, pad)
+
+	for i := 1; i < padding; i++ {
+		paddedData = append(paddedData, pad)
+	}
+
+	return paddedData
+}
+
+func unpadData(data []byte) []byte {
+	length := len(data)
+	unpad := int(data[length-1])
+
+	return data[:length-unpad]
+}
+
+func Encrypt(dataString string, privateKey string) (string, error) {
+	encryptedData, err := encrypt(dataString, privateKey)
+	if err != nil {
+		fmt.Println("Error while encrypting:", err)
+		return "", err
+	}
+	return encryptedData, nil
+
+}
+
+func Decrypt(encryptedData string, privateKey string) (string, error) {
+	decryptedData, err := decrypt(encryptedData, privateKey)
+	if err != nil {
+		fmt.Println("Error while decrypting:", err)
+		return "", err
+	}
+	return decryptedData, nil
+}
+
+func RsaSignPri(data interface{}, priKey string) (string, error) {
+	// data interface to byte
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		fmt.Println("Failed to marshal JSON:", err)
+		return "", fmt.Errorf("failed to marshal json")
+	}
+	// hash data
+	hashed := sha256.Sum256([]byte(jsonData))
+	// convert private key string to private key
+	privateKey, err := convertPrivateKeyString(priKey)
+	if err != nil {
+		fmt.Println("Failed to convert private key:", err)
+		return "", fmt.Errorf("failed to convert private key")
+	}
+	// sign data
+	signature, err := rsa.SignPKCS1v15(rand.Reader, privateKey, crypto.SHA256, hashed[:])
+	if err != nil {
+		fmt.Println("Failed to sign data:", err)
+		return "", fmt.Errorf("failed to sign data")
+	}
+	// convert byte to hex
+	signatureHex := hex.EncodeToString(signature)
+	// return signature
+	return signatureHex, nil
+}
+
+func convertPrivateKeyString(privateKeyString string) (*rsa.PrivateKey, error) {
+	// Add PEM headers and footers to the private key string
+	pemKey := fmt.Sprintf("-----BEGIN PRIVATE KEY-----\n%s\n-----END PRIVATE KEY-----", privateKeyString)
+
+	// Decode the PEM-encoded private key
+	privateKeyPEM, _ := pem.Decode([]byte(pemKey))
+	if privateKeyPEM == nil {
+		return nil, fmt.Errorf("failed to decode PEM block: invalid format")
+	}
+
+	// Parse the DER-encoded private key
+	parsedKey, err := x509.ParsePKCS8PrivateKey(privateKeyPEM.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse PKCS8 private key: %w", err)
+	}
+
+	privateKey, ok := parsedKey.(*rsa.PrivateKey)
+	if !ok {
+		return nil, fmt.Errorf("unexpected key type")
+	}
+
+	return privateKey, nil
 }
