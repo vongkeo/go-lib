@@ -20,10 +20,10 @@ go test -cover ./...
 ### Update to go package
 ```bash
 git add .
-git commit -m "update to v0.1.4"
+git commit -m "update to v0.1.5"
 git push origin
-git tag v0.1.4
-git push origin v0.1.4
-GOPROXY=proxy.golang.org go list -m github.com/vongkeo/go-lib@v0.1.4
+git tag v0.1.5
+git push origin v0.1.5
+GOPROXY=proxy.golang.org go list -m github.com/vongkeo/go-lib@v0.1.5
 go list -m
 ```
