@@ -594,3 +594,19 @@ func getFieldName(namespace string) string {
 	parts := strings.Split(namespace, ".")
 	return parts[len(parts)-1]
 }
+
+func IsEmailValid(email string) (bool, error) {
+	// mail validation should contain @
+	if !strings.Contains(email, "@") {
+		return false, fmt.Errorf("Email should contain @")
+	}
+	// mail validation should contain .
+	if !strings.Contains(email, ".") {
+		return false, fmt.Errorf("Email should contain .")
+	}
+	// mail validation should not contain space
+	if strings.Contains(email, " ") {
+		return false, fmt.Errorf("Email should not contain space")
+	}
+	return true, nil
+}
