@@ -2,7 +2,6 @@
  * Author: Vongkeo KEOSAVANH
  * File: go-lib.go
  */
-
 package lib
 
 import (
@@ -22,17 +21,30 @@ import (
 	"log"
 	mathRand "math/rand"
 	"net/http"
+	"net/smtp"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/tealeg/xlsx"
 )
 
-func Contains(lists string, fileEx string) bool {
-	//  split string to array
-	list := strings.Split(lists, ",")
+type MailAuth struct {
+	From string
+	Pass string
+	Host string
+	Port string
+}
+type Email struct {
+	To      []string
+	Subject string
+	Body    string
+}
+
+func Contains(list []string, fileEx string) bool {
 	// check file extension
 	for _, v := range list {
 		if v == fileEx {
@@ -57,23 +69,38 @@ func GetTimeNow() string {
 
 }
 
-func DateStartZone(date string, zone string) time.Time {
+func DateStartZone(date string) time.Time {
 	// 2024-01-18 00:00:00
-	loc, _ := time.LoadLocation(zone)
+	// set timezone
+	timezone := os.Getenv("TIMEZONE")
+	if timezone == "" {
+		timezone = "Asia/Bangkok"
+	}
+	loc, _ := time.LoadLocation(timezone)
 	t, _ := time.ParseInLocation("2006-01-02", date, loc)
 	return t
 
 }
 
-func DateEndZone(date string, zone string) time.Time {
+func DateEndZone(date string) time.Time {
 	// 2024-01-18 23:59:59
-	loc, _ := time.LoadLocation(zone)
+	// set timezone
+	timezone := os.Getenv("TIMEZONE")
+	if timezone == "" {
+		timezone = "Asia/Bangkok"
+	}
+	loc, _ := time.LoadLocation(timezone)
 	t, _ := time.ParseInLocation("2006-01-02", date, loc)
 	return t.Add(time.Hour*24 - time.Nanosecond)
 }
 
-func GetDate(zone string) time.Time {
-	loc, _ := time.LoadLocation(zone)
+func GetDate() time.Time {
+	// set timezone
+	timezone := os.Getenv("TIMEZONE")
+	if timezone == "" {
+		timezone = "Asia/Bangkok"
+	}
+	loc, _ := time.LoadLocation(timezone)
 	now := time.Now().In(loc).Format("2006-01-02")
 	t, _ := time.ParseInLocation("2006-01-02", now, loc)
 	return t
@@ -156,14 +183,15 @@ func Log(requestID any, messages ...interface{}) {
 	log.Printf("[%s] [%s] %s", requestID, label, fmt.Sprint(messages...))
 }
 
-func SetTimeZone(zone string) bool {
+func SetTimeZone() bool {
 	// set timezone
-	if zone == "" {
-		zone = "Asia/Bangkok"
+	timezone := os.Getenv("TIMEZONE")
+	if timezone == "" {
+		timezone = "Asia/Bangkok"
 	}
-	loc, _ := time.LoadLocation(zone)
+	loc, _ := time.LoadLocation(timezone)
 	time.Local = loc
-	os.Setenv("TZ", zone)
+	os.Setenv("TZ", timezone)
 	return true
 }
 
@@ -484,4 +512,85 @@ func ExcelToJson(xlFile *xlsx.File) ([]map[string]interface{}, error) {
 	}
 	return jsonSlice, nil
 
+}
+
+func SendMail(mailAuth MailAuth, email Email) {
+	// send to mail
+	addr := fmt.Sprintf("%s:%s", mailAuth.Host, mailAuth.Port)
+	headers := make(map[string]string)
+	headers["From"] = mailAuth.From
+	headers["To"] = strings.Join(email.To, ",")
+	headers["Subject"] = email.Subject
+	headers["MIME-Version"] = "1.0"
+	headers["Content-Type"] = "text/html; charset=utf-8"
+	headers["Content-Transfer-Encoding"] = "base64"
+	headers["X-Priority"] = "1"
+	headers["X-MSMail-Priority"] = "High"
+	headers["Importance"] = "High"
+	headers["X-Mailer"] = "Go-Mail-Sender"
+	headers["Date"] = time.Now().Format(time.RFC1123Z)
+	header := ""
+	for k, v := range headers {
+		header += fmt.Sprintf("%s: %s\r\n", k, v)
+	}
+	msg := header + "\r\n" + base64.StdEncoding.EncodeToString([]byte(email.Body))
+	fmt.Println("Sending email to: " + strings.Join(email.To, ","))
+	fmt.Println("Subject: " + email.Subject)
+	auth := smtp.PlainAuth("", mailAuth.From, mailAuth.Pass, mailAuth.Host)
+	err := smtp.SendMail(addr, auth, mailAuth.From, email.To, []byte(msg))
+	if err != nil {
+		fmt.Println("Error sending email:", err)
+		return
+	}
+	fmt.Println("Email Sent Successfully!")
+}
+
+// Generate html content
+func GenHtmlContent(path string) (string, error) {
+	// read html file
+	rootPath, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	// read html file
+	htmlFile := rootPath + path
+	// read html file
+	htmlContent, err := os.ReadFile(htmlFile)
+	if err != nil {
+		fmt.Println("Error reading HTML file:", err)
+		return "", err
+	}
+	return string(htmlContent), nil
+}
+
+func GenOTP(length int) string {
+	str := "0123456789"
+	result := ""
+	for i := 0; i < length; i++ {
+		result += string(str[randomInt(0, len(str)-1)])
+	}
+	return result
+}
+
+func FormatFieldErrors(errors validator.ValidationErrors, model any) string {
+	var fieldErrors []string
+	for _, err := range errors {
+		field, _ := reflect.TypeOf(model).FieldByName(err.StructField())
+		jsonName := field.Tag.Get("json")
+		fieldName := getFieldName(jsonName)
+		if fieldName == "" {
+			fieldName = err.StructField()
+		}
+		errorMsg := fmt.Sprintf("%s is required", fieldName)
+		fieldErrors = append(fieldErrors, errorMsg)
+	}
+	return strings.Join(fieldErrors, ", ")
+}
+
+func getFieldName(namespace string) string {
+	if namespace == "" {
+		return ""
+	}
+	parts := strings.Split(namespace, ".")
+	return parts[len(parts)-1]
 }

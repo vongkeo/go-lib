@@ -6,6 +6,7 @@
 package lib
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -14,8 +15,8 @@ func TestContains(t *testing.T) {
 	lists := "js,css,html"
 	fileEx := "css"
 	expected := true
-
-	if got := Contains(lists, fileEx); got != expected {
+	splitList := strings.Split(lists, ",")
+	if got := Contains(splitList, fileEx); got != expected {
 		t.Errorf("Contains(%s, %s) = %t, didn't return %t", lists, fileEx, got, expected)
 	}
 }
@@ -40,9 +41,8 @@ func TestGetTimeNow(t *testing.T) {
 
 func TestDateStartZone(t *testing.T) {
 	date := "2024-01-18"
-	zone := "Asia/Bangkok"
 	expected := true
-	got := DateStartZone(date, zone)
+	got := DateStartZone(date)
 	if got.String() == "" {
 		t.Errorf("DateStartZone(%s) = %s, didn't return %t", date, got.String(), expected)
 	}
@@ -51,9 +51,8 @@ func TestDateStartZone(t *testing.T) {
 
 func TestDateEndZone(t *testing.T) {
 	date := "2024-01-18"
-	zone := "Asia/Bangkok"
 	expected := true
-	if got := DateEndZone(date, zone); got == (time.Time{}) {
+	if got := DateEndZone(date); got == (time.Time{}) {
 		t.Errorf("DateEndZone(%s) = %s, didn't return %t", date, got.String(), expected)
 	}
 
@@ -62,8 +61,7 @@ func TestDateEndZone(t *testing.T) {
 // GetDate
 func TestGetDate(t *testing.T) {
 	expected := true
-	zone := "Asia/Bangkok"
-	if got := GetDate(zone); got == (time.Time{}) {
+	if got := GetDate(); got == (time.Time{}) {
 		t.Errorf("GetDate() = %s, didn't return %t", got.String(), expected)
 	}
 }
@@ -144,8 +142,7 @@ func TestLog(t *testing.T) {
 
 func TestSetTimeZone(t *testing.T) {
 	expected := true
-	zone := "Asia/Bangkok"
-	if got := SetTimeZone(zone); got != expected {
+	if got := SetTimeZone(); got != expected {
 		t.Errorf("SetTimeZone() = %t, didn't return %t", got, expected)
 	}
 
